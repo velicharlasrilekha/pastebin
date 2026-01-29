@@ -28,11 +28,8 @@ export async function POST(req: Request) {
 
   const id = crypto.randomUUID().slice(0, 8);
 
-  // ✅ FIX: await nowMs()
   const now = await nowMs();
-
-  const expiresAt =
-    ttl_seconds ? now + ttl_seconds * 1000 : null;
+  const expiresAt = ttl_seconds ? now + ttl_seconds * 1000 : null;
 
   await redis.hset(`paste:${id}`, {
     content,
@@ -40,8 +37,11 @@ export async function POST(req: Request) {
     remaining: max_views ?? null,
   });
 
+  // ✅ Build URL from request origin
+  const origin = new URL(req.url).origin;
+
   return NextResponse.json({
     id,
-    url: `${process.env.NEXT_PUBLIC_BASE_URL}/p/${id}`,
+    url: `${origin}/p/${id}`,
   });
 }

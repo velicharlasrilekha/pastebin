@@ -1,17 +1,16 @@
 import { notFound } from "next/navigation";
+import { getPasteById } from "@/lib/pastes";
 
-async function getPaste(id: string) {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_BASE_URL}/api/pastes/${id}`,
-    { cache: "no-store" }
-  );
-  if (!res.ok) return null;
-  return res.json();
-}
-
-export default async function PastePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PastePage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
-  const paste = await getPaste(id);
+
+  if (!id) notFound();
+
+  const paste = await getPasteById(id);
   if (!paste) notFound();
 
   return (
