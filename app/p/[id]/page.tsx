@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getPasteById } from "@/lib/pastes";
+import { getPasteById } from "../../../lib/pastes";
 
 export default async function PastePage({
   params,

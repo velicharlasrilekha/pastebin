@@ -1,33 +1,46 @@
 import { redis } from "@/lib/redis";
 import { nowMs } from "@/lib/time";
 
-export async function getPasteById(id: string) {
-  const key = `paste:${id}`;
-  const data = await redis.hgetall<any>(key);
+export type Paste = {
+  content: string;
+  expires_at: number | null;
+  remaining_views: number | null;
+};
 
-  if (!data || !data.content) return null;
+export async function getPasteById(id: string): Promise<Paste | null> {
+  const key = `paste:${id}`;
+  const data = await redis.hgetall(key);
+
+  if (!data || typeof data.content !== "string") {
+    return null;
+  }
+
+  const now = await nowMs();
 
   // TTL check
-  if (data.expires_at && nowMs() > Number(data.expires_at)) {
+  if (data.expires_at && now > Number(data.expires_at)) {
     await redis.del(key);
     return null;
   }
 
-  // View count check
-  if (data.remaining !== null) {
-    const remaining = await redis.hincrby(key, "remaining", -1);
-    if (remaining < 0) {
+  // Max views check
+  let remainingViews: number | null = null;
+
+  if (data.remaining !== null && data.remaining !== undefined) {
+    const remaining = Number(data.remaining);
+
+    if (remaining <= 0) {
       await redis.del(key);
       return null;
     }
+
+    await redis.hincrby(key, "remaining", -1);
+    remainingViews = remaining - 1;
   }
 
   return {
     content: data.content,
-    remaining_views:
-      data.remaining !== null ? Math.max(0, Number(data.remaining) - 1) : null,
-    expires_at: data.expires_at
-      ? new Date(Number(data.expires_at)).toISOString()
-      : null,
+    expires_at: data.expires_at ? Number(data.expires_at) : null,
+    remaining_views: remainingViews,
   };
 }
